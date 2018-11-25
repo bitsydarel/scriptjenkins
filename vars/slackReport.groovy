@@ -58,6 +58,11 @@ final String getFailedTests() {
     return failedTestsString
 }
 
+@NonCPS
+final int getFailedTestCount() {
+    return currentBuild.rawBuild.getAction(AbstractTestResultAction.class).getFailCount()
+}
+
 final boolean isPublishingBranch() { return env.GIT_BRANCH == 'origin/master' }
 
 final def call(final String slackChannel) {
@@ -72,7 +77,7 @@ final def call(final String slackChannel) {
     // Strip the branch name out of the job name (ex: "Job Name/branch1" -> "Job Name")
     jobName = jobName[0..(jobName.indexOf('/') - 1)]
 
-    if (failed > 0) {
+    if (getFailedTestCount() > 0) {
         buildStatus = "Failed"
 
         if (isPublishingBranch()) {
