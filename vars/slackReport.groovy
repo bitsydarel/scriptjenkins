@@ -1,23 +1,25 @@
-#!/usr/bin/env groovy
-
 import hudson.tasks.junit.CaseResult
 import hudson.tasks.test.AbstractTestResultAction
 
 final def notifySlackWithPlugin(final text, final channel, final attachments) {
+    echo 'sending report to slack'
     slackSend(message: text, channel: channel, attachments: attachments.toString())
 }
 
 final def getGitAuthor() {
+    echo 'getting git author'
     final def commit = sh(returnStdout: true, script: 'git rev-parse HEAD')
     return sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
 }
 
 final def getLastCommitMessage() {
+    echo 'getting last commit message'
     return sh(returnStdout: true, script: 'git log -1 --pretty=%B').trim()
 }
 
 @NonCPS
 final String getTestSummary() {
+    echo 'generating test summary'
     final def testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
     String summary
 
