@@ -140,5 +140,3 @@ final def sendReport(final String slackChannel) {
         ])
     }
 }
-
-return this
