@@ -58,7 +58,7 @@ final String getFailedTests() {
 
 final boolean isPublishingBranch() { return env.GIT_BRANCH == 'origin/master' }
 
-final def sendReport(final String slackChannel) {
+final def call(final String slackChannel) {
     final def message = getLastCommitMessage()
     final def author = getGitAuthor()
     final def testSummary = getTestSummary()
