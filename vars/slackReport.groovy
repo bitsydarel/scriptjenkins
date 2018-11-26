@@ -108,19 +108,20 @@ final def call(final String slackChannel) {
                         .add("title", "Failed Tests")
                         .add("color", buildColor)
                         .add("text", getFailedTests())
-                        .add("mrkdwn_in", Json.createArrayBuilder().add("text"))
+                        .add("mrkdwn_in", Json.createArrayBuilder().add("text")
+                )
         )
     } else {
         defaultMessage.add("color", buildColor)
         defaultMessage.add("author_name", "${author}")
         defaultMessage.add("text", "${buildStatus}\n${author}")
         defaultMessage.add("fields", getDefaultFields(testSummary, message))
-
         attachments.add(defaultMessage)
     }
 
     final StringWriter writer = new StringWriter()
     final JsonArray result = attachments.build()
+    echo result.toString()
     Json.createWriter(writer).withCloseable { jsonWriter -> jsonWriter.writeArray(result) }
 
     echo writer.toString()
@@ -128,7 +129,7 @@ final def call(final String slackChannel) {
     notifySlackWithPlugin("", slackChannel, writer.toString())
 }
 
-final JsonArray getDefaultFields(final String testSummary, final String lastCommitMessage) {
+final JsonArrayBuilder getDefaultFields(final String testSummary, final String lastCommitMessage) {
     final JsonArrayBuilder defaultFields = Json.createArrayBuilder()
 
     defaultFields.add(
@@ -152,5 +153,5 @@ final JsonArray getDefaultFields(final String testSummary, final String lastComm
                     .add("short", false)
     )
 
-    return defaultFields.build()
+    return defaultFields
 }
