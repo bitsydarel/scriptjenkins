@@ -101,7 +101,7 @@ final def call(final String slackChannel) {
         fieldsMarkdowns.add("fields")
         defaultMessage.put("mrkdwn_in", fieldsMarkdowns)
         //populating all fields
-        defaultMessage.add("fields", getDefaultFields(testSummary, message))
+        defaultMessage.put("fields", getDefaultFields(testSummary, message))
 
         attachments.add(defaultMessage)
 
