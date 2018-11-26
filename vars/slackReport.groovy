@@ -119,14 +119,9 @@ final def call(final String slackChannel) {
         attachments.add(defaultMessage)
     }
 
-    final StringWriter writer = new StringWriter()
     final JsonArray result = attachments.build()
     echo result.toString()
-    Json.createWriter(writer).withCloseable { jsonWriter -> jsonWriter.writeArray(result) }
-
-    echo writer.toString()
-
-    notifySlackWithPlugin("", slackChannel, writer.toString())
+    notifySlackWithPlugin("", slackChannel, result.toString())
 }
 
 final JsonArrayBuilder getDefaultFields(final String testSummary, final String lastCommitMessage) {
