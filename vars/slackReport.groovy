@@ -22,7 +22,7 @@ final String getLastCommitMessage() {
 @NonCPS
 final String getTestSummary() {
     echo 'generating test summary'
-    final def testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
+    final AbstractTestResultAction testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
     String summary
 
     if (testResultAction != null) {
@@ -41,7 +41,7 @@ final String getTestSummary() {
 
 @NonCPS
 final String getFailedTests() {
-    final def testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
+    final AbstractTestResultAction testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
     String failedTestsString = "```"
 
     if (testResultAction != null) {
@@ -62,7 +62,8 @@ final String getFailedTests() {
 
 @NonCPS
 final int getFailedTestCount() {
-    return currentBuild.rawBuild.getAction(AbstractTestResultAction.class).getFailCount()
+    final AbstractTestResultAction testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
+    return testResultAction != null ? testResultAction.getFailCount() : 0
 }
 
 final boolean isPublishingBranch() { return env.GIT_BRANCH == 'origin/master' }
