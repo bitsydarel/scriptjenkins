@@ -3,25 +3,21 @@ import hudson.tasks.test.AbstractTestResultAction
 
 import javax.json.*
 
-final def notifySlackWithPlugin(final text, final channel, final attachments) {
-    echo 'sending report to slack'
+private final def notifySlackWithPlugin(final text, final channel, final attachments) {
     slackSend(message: text, channel: channel, attachments: attachments)
 }
 
-final String getGitAuthor() {
-    echo 'getting git author'
+private final String getGitAuthor() {
     final def commit = sh(returnStdout: true, script: 'git rev-parse HEAD')
     return sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
 }
 
-final String getLastCommitMessage() {
-    echo 'getting last commit message'
+private final String getLastCommitMessage() {
     return sh(returnStdout: true, script: 'git log -1 --pretty=%B').trim()
 }
 
 @NonCPS
-final String getTestSummary() {
-    echo 'generating test summary'
+private final String getTestSummary() {
     final AbstractTestResultAction testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
     String summary
 
@@ -40,7 +36,7 @@ final String getTestSummary() {
 }
 
 @NonCPS
-final String getFailedTests() {
+private final String getFailedTests() {
     final AbstractTestResultAction testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
     String failedTestsString = "```"
 
@@ -61,24 +57,47 @@ final String getFailedTests() {
 }
 
 @NonCPS
-final int getFailedTestCount() {
+private final int getFailedTestCount() {
     final AbstractTestResultAction testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
     return testResultAction != null ? testResultAction.getFailCount() : 0
 }
 
-final boolean isPublishingBranch() { return env.GIT_BRANCH == 'origin/master' }
+@NonCPS
+private final boolean isPublishingBranch() { return env.GIT_BRANCH == 'origin/master' }
 
-final def call(final String slackChannel) {
+
+@NonCPS
+private final JsonArrayBuilder getDefaultFields(final String testSummary, final String lastCommitMessage) {
+    final JsonArrayBuilder defaultFields = Json.createArrayBuilder()
+
+    defaultFields.add(
+            Json.createObjectBuilder()
+                    .add("title", "Branch")
+                    .add("value", "${env.GIT_BRANCH}")
+                    .add("short", true)
+    )
+
+    defaultFields.add(
+            Json.createObjectBuilder()
+                    .add("title", "Test Results")
+                    .add("value", testSummary)
+                    .add("short", true)
+    )
+
+    defaultFields.add(
+            Json.createObjectBuilder()
+                    .add("title", "Last Commit")
+                    .add("value", lastCommitMessage)
+                    .add("short", false)
+    )
+
+    return defaultFields
+}
+
+private final String getBuildReport(final String jobName, String buildColor, String buildStatus) {
     final String message = getLastCommitMessage()
     final String author = getGitAuthor()
     final String testSummary = getTestSummary()
-
-    String buildColor = currentBuild.result == null ? "good" : "warning"
-    String buildStatus = currentBuild.result == null ? "Success" : currentBuild.result
-    String jobName = "${env.JOB_NAME}"
-
-    // Strip the branch name out of the job name (ex: "Job Name/branch1" -> "Job Name")
-    jobName = jobName[0..(jobName.indexOf('/') - 1)]
 
     final JsonArrayBuilder attachments = Json.createArrayBuilder()
 
@@ -120,34 +139,18 @@ final def call(final String slackChannel) {
         attachments.add(defaultMessage)
     }
 
-    final JsonArray result = attachments.build()
-    echo result.toString()
-    notifySlackWithPlugin("", slackChannel, result.toString())
+    return attachments.build().toString()
 }
 
-final JsonArrayBuilder getDefaultFields(final String testSummary, final String lastCommitMessage) {
-    final JsonArrayBuilder defaultFields = Json.createArrayBuilder()
+final def call(final String slackChannel) {
+    String buildColor = currentBuild.result == null ? "good" : "warning"
+    String buildStatus = currentBuild.result == null ? "Success" : currentBuild.result
+    String jobName = "${env.JOB_NAME}"
 
-    defaultFields.add(
-            Json.createObjectBuilder()
-                    .add("title", "Branch")
-                    .add("value", "${env.GIT_BRANCH}")
-                    .add("short", true)
-    )
+    // Strip the branch name out of the job name (ex: "Job Name/branch1" -> "Job Name")
+    jobName = jobName[0..(jobName.indexOf('/') - 1)]
 
-    defaultFields.add(
-            Json.createObjectBuilder()
-                    .add("title", "Test Results")
-                    .add("value", testSummary)
-                    .add("short", true)
-    )
+    final String report = getBuildReport(jobName, buildColor, buildStatus)
 
-    defaultFields.add(
-            Json.createObjectBuilder()
-                    .add("title", "Last Commit")
-                    .add("value", lastCommitMessage)
-                    .add("short", false)
-    )
-
-    return defaultFields
+    notifySlackWithPlugin("", slackChannel, report)
 }
