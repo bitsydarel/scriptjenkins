@@ -1,9 +1,11 @@
 import hudson.tasks.junit.CaseResult
 import hudson.tasks.test.AbstractTestResultAction
+import net.sf.json.JSONArray
+import net.sf.json.JSONObject
 
 final def notifySlackWithPlugin(final text, final channel, final attachments) {
     echo 'sending report to slack'
-    slackSend(message: text, channel: channel, attachments: attachments.toString())
+    slackSend(message: text, channel: channel, attachments: attachments)
 }
 
 final def getGitAuthor() {
@@ -12,7 +14,7 @@ final def getGitAuthor() {
     return sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
 }
 
-final def getLastCommitMessage() {
+final String getLastCommitMessage() {
     echo 'getting last commit message'
     return sh(returnStdout: true, script: 'git log -1 --pretty=%B').trim()
 }
@@ -77,6 +79,12 @@ final def call(final String slackChannel) {
     // Strip the branch name out of the job name (ex: "Job Name/branch1" -> "Job Name")
     jobName = jobName[0..(jobName.indexOf('/') - 1)]
 
+    final JSONArray attachments = new JSONArray()
+
+    final JSONObject defaultMessage = new JSONObject()
+    defaultMessage.put("title", "${jobName}, build #${env.BUILD_NUMBER}")
+    defaultMessage.put("title_link", "${env.BUILD_URL}")
+
     if (getFailedTestCount() > 0) {
         buildStatus = "Failed"
 
@@ -86,64 +94,62 @@ final def call(final String slackChannel) {
 
         buildColor = "danger"
 
-        notifySlackWithPlugin("", slackChannel, [
-                [
-                        title: "${jobName}, build #${env.BUILD_NUMBER}",
-                        title_link: "${env.BUILD_URL}",
-                        color: "${buildColor}",
-                        text: "${buildStatus}\n${author}",
-                        "mrkdwn_in": ["fields"],
-                        fields: [
-                                [
-                                        title: "Branch",
-                                        value: "${env.GIT_BRANCH}",
-                                        short: true
-                                ],
-                                [
-                                        title: "Test Results",
-                                        value: "${testSummary}",
-                                        short: true
-                                ],
-                                [
-                                        title: "Last Commit",
-                                        value: "${message}",
-                                        short: false
-                                ]
-                        ]
-                ],
-                [
-                        title: "Failed Tests",
-                        color: "${buildColor}",
-                        text: "${getFailedTests()}",
-                        "mrkdwn_in": ["text"],
-                ]
-        ])
+        defaultMessage.put("color", "${buildColor}")
+        defaultMessage.put("text", "${buildStatus}\n${author}")
+        //markdown location
+        final JSONArray fieldsMarkdowns = new JSONArray()
+        fieldsMarkdowns.add("fields")
+        defaultMessage.put("mrkdwn_in", fieldsMarkdowns)
+        //populating all fields
+        defaultMessage.add("fields", getDefaultFields(testSummary, message))
+
+        attachments.add(defaultMessage)
+
+        final JSONArray textMarkdowns = new JSONArray()
+        fieldsMarkdowns.add("text")
+
+        final JSONObject failedTests = new JSONObject()
+        failedTests.put("title", "Failed Tests")
+        failedTests.put("color", "${buildColor}")
+        failedTests.put("text", "${getFailedTests()}")
+        failedTests.put("mrkdwn_in", textMarkdowns)
+
+        attachments.add(failedTests)
     } else {
-        notifySlackWithPlugin("", slackChannel, [
-                [
-                        title: "${jobName}, build #${env.BUILD_NUMBER}",
-                        title_link: "${env.BUILD_URL}",
-                        color: "${buildColor}",
-                        author_name: "${author}",
-                        text: "${buildStatus}\n${author}",
-                        fields: [
-                                [
-                                        title: "Branch",
-                                        value: "${env.GIT_BRANCH}",
-                                        short: true
-                                ],
-                                [
-                                        title: "Test Results",
-                                        value: "${testSummary}",
-                                        short: true
-                                ],
-                                [
-                                        title: "Last Commit",
-                                        value: "${message}",
-                                        short: false
-                                ]
-                        ]
-                ]
-        ])
+        defaultMessage.put("color", "${buildColor}")
+        defaultMessage.put("author_name", "${author}")
+        defaultMessage.put("text", "${buildStatus}\n${author}")
+        defaultMessage.put("fields", getDefaultFields(testSummary, message))
+
+        attachments.add(defaultMessage)
     }
+
+    notifySlackWithPlugin("", slackChannel, attachments.toString())
+}
+
+final JSONArray getDefaultFields(final String testSummary, final String lastCommitMessage) {
+    final JSONArray defaultFields = new JSONArray()
+
+    final JSONObject branchField = new JSONObject()
+    branchField.put("title", "Branch")
+    branchField.put("value", "${env.GIT_BRANCH}")
+    branchField.put("short", true)
+
+    defaultFields.add(branchField)
+
+    final JSONObject testResults = new JSONObject()
+    testResults.put("title", "Test Results")
+    testResults.put("value", "${testSummary}")
+    testResults.put("short", true)
+
+    defaultFields.add(testResults)
+
+    final JSONObject lastCommit = new JSONObject()
+    lastCommit.put("title", "Last Commit")
+    lastCommit.put("value", "${lastCommitMessage}")
+    lastCommit.put("short", false)
+
+    defaultFields.add(lastCommit)
+
+    return defaultFields
 }
