@@ -121,9 +121,7 @@ final def call(final String slackChannel) {
 
     final StringWriter writer = new StringWriter()
     final JsonArray result = attachments.build()
-    Json.createWriter(writer)..withCloseable { jsonWriter ->
-        jsonWriter.writeArray(result)
-    }
+    Json.createWriter(writer).withCloseable { jsonWriter -> jsonWriter.writeArray(result) }
 
     echo writer.toString()
 
