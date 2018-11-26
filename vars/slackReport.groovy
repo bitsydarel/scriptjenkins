@@ -124,6 +124,8 @@ final def call(final String slackChannel) {
         attachments.add(defaultMessage)
     }
 
+    echo attachments.toString()
+
     notifySlackWithPlugin("", slackChannel, attachments.toString())
 }
 
