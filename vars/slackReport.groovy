@@ -1,5 +1,6 @@
 import hudson.tasks.junit.CaseResult
 import hudson.tasks.test.AbstractTestResultAction
+import com.cloudbees.groovy.cps.NonCPS
 
 import javax.json.*
 
